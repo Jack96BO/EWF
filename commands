@@ -1,0 +1,2 @@
+./ewfacquire.exe -f ewf -S 5000000000 -t "D:\Percorso\Di\Destinazione" "D:\Percorso\Di\Destinazione\immagine.001"
+./ewfexport.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
