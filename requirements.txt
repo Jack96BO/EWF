@@ -1,0 +1,9 @@
+# Python dependencies for read_e01.py
+#
+# These are system packages that must be installed via apt-get on Debian/Ubuntu:
+#
+#   sudo apt-get install python3-libewf python3-tsk ewf-tools
+#
+# python3-libewf  → provides the `pyewf` Python module (libewf bindings)
+# python3-tsk     → provides the `pytsk3` Python module (The Sleuth Kit bindings)
+# ewf-tools       → provides command-line tools: ewfinfo, ewfacquire, ewfexport, …
