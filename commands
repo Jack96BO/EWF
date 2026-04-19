@@ -1,2 +1,23 @@
-./ewfacquire.exe -f ewf -S 5000000000 -t "D:\Percorso\Di\Destinazione" "D:\Percorso\Di\Destinazione\immagine.001"
-./ewfexport.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
+1. ./ewfacquire.exe -f ewf -S 5000000000 -t "D:\Percorso\Di\Destinazione" "D:\Percorso\Di\Destinazione\immagine.001"
+2. ./ewfexport.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
+3.
+
+# Lettura e analisi di file E01 tramite ewfinfo
+./ewfinfo.exe "D:\Percorso\Di\Origine\immagine.E01"
+./ewfinfo.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
+
+# ---------------------------------------------------------------
+# Utilizzo dello script Python ewf_tools.py
+# ---------------------------------------------------------------
+
+# Visualizza metadati di un file E01 (singolo o multi-segmento)
+python ewf_tools.py info "D:\Percorso\Di\Origine\immagine.E01"
+python ewf_tools.py info "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02"
+
+# Converti da E01 a RAW
+python ewf_tools.py to-raw "D:\Percorso\Di\Origine\immagine.E01" -o "D:\Percorso\Di\Destinazione\output_raw"
+python ewf_tools.py to-raw "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" -o "D:\Percorso\Di\Destinazione\output_raw"
+
+# Converti da RAW a E01
+python ewf_tools.py to-e01 "D:\Percorso\Di\Origine\immagine.raw" -o "D:\Percorso\Di\Destinazione\immagine_e01"
+python ewf_tools.py to-e01 "D:\Percorso\Di\Origine\immagine.001" -o "D:\Percorso\Di\Destinazione\immagine_e01" --segment-size 2000000000
