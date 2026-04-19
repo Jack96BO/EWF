@@ -1,2 +1,61 @@
+### ewf_tools.py – Comprehensive E01 management ###
+
+## Acquisizione da disco fisico (Linux: /dev/sdX, Windows: \\.\PhysicalDriveN)
+# python ewf_tools.py acquire -f ewf -S 2GB -c fast \
+#   -C "2024-001" -E "Mario Rossi" -D "Disco sospettato" \
+#   -t percorso/immagine /dev/sdb
+
+## Creazione E01 da stream raw / dd (pipe)
+# dd if=/dev/sda bs=512 | python ewf_tools.py acquire-stream -t percorso/immagine
+
+## Conversione da immagine RAW (.dd, .raw, .img) a E01
+# python ewf_tools.py acquire-stream -i disco.raw -t percorso/immagine -c best
+
+## Informazioni su file E01
+# python ewf_tools.py info percorso/immagine.E01
+
+## Esportazione E01 → raw
+# python ewf_tools.py export -f raw -t percorso/output percorso/immagine.E01
+
+## Esportazione E01 → nuovo E01 (ri-compressione)
+# python ewf_tools.py export -f ewf -c best -t percorso/compressa percorso/immagine.E01
+
+## Verifica integrità checksum E01
+# python ewf_tools.py verify percorso/immagine.E01
+
+## Recupero immagine corrotta
+# python ewf_tools.py recover -t percorso/recuperata percorso/corrotta.E01
+
+## Montaggio E01 come filesystem (solo Linux, richiede FUSE)
+# mkdir /mnt/prova
+# python ewf_tools.py mount percorso/immagine.E01 /mnt/prova
+# fusermount -u /mnt/prova
+
+## Debug struttura interna E01
+# python ewf_tools.py debug percorso/immagine.E01
+
+
+### read_e01.py – Lettura e navigazione file E01 ###
+
+## Metadati e informazioni caso
+# python read_e01.py info percorso/immagine.E01
+
+## Lista file in una cartella (richiede pyewf + pytsk3)
+# python read_e01.py ls percorso/immagine.E01 /Windows/System32
+
+## Albero directory (richiede pyewf + pytsk3)
+# python read_e01.py tree percorso/immagine.E01 / --max-depth 3
+
+## Visualizza contenuto di un file (richiede pyewf + pytsk3)
+# python read_e01.py cat percorso/immagine.E01 /Windows/System32/drivers/etc/hosts
+
+## Estrai un file o cartella (richiede pyewf + pytsk3)
+# python read_e01.py extract percorso/immagine.E01 /Users/Utente/Desktop -o ./estratto
+
+
+### ewf/ – Eseguibili Windows bundled ###
 ./ewfacquire.exe -f ewf -S 5000000000 -t "D:\Percorso\Di\Destinazione" "D:\Percorso\Di\Destinazione\immagine.001"
 ./ewfexport.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
+./ewfinfo.exe "D:\Percorso\Di\Origine\immagine.E01"
+./ewfverify.exe "D:\Percorso\Di\Origine\immagine.E01"
+./ewfmount.exe "D:\Percorso\Di\Origine\immagine.E01" X:
