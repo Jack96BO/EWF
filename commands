@@ -56,6 +56,20 @@
 ### ewf/ – Eseguibili Windows bundled ###
 ./ewfacquire.exe -f ewf -S 5000000000 -t "D:\Percorso\Di\Destinazione" "D:\Percorso\Di\Destinazione\immagine.001"
 ./ewfexport.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
+
+# Lettura e analisi di file E01 tramite ewfinfo
 ./ewfinfo.exe "D:\Percorso\Di\Origine\immagine.E01"
+
+# Lettura di file E01 multi-segmento tramite ewfinfo
+./ewfinfo.exe "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02" "D:\Percorso\Di\Origine\immagine.E03"
+
 ./ewfverify.exe "D:\Percorso\Di\Origine\immagine.E01"
 ./ewfmount.exe "D:\Percorso\Di\Origine\immagine.E01" X:
+
+# Utilizzo dello script Python per visualizzare informazioni su un file E01
+python read_e01.py info "D:\Percorso\Di\Origine\immagine.E01"
+python read_e01.py info "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02"
+
+# Utilizzo dello script Python per esportare il contenuto di un file E01 in formato raw
+python ewf_tools.py export -f raw -t "D:\Percorso\Di\Destinazione\output_raw" "D:\Percorso\Di\Origine\immagine.E01"
+python ewf_tools.py export -f raw -t "D:\Percorso\Di\Destinazione\output_raw" "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02"
