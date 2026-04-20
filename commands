@@ -73,3 +73,46 @@ python read_e01.py info "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Or
 # Utilizzo dello script Python per esportare il contenuto di un file E01 in formato raw
 python ewf_tools.py export -f raw -t "D:\Percorso\Di\Destinazione\output_raw" "D:\Percorso\Di\Origine\immagine.E01"
 python ewf_tools.py export -f raw -t "D:\Percorso\Di\Destinazione\output_raw" "D:\Percorso\Di\Origine\immagine.E01" "D:\Percorso\Di\Origine\immagine.E02"
+
+
+### api_server.py – Orchestrazione HTTP locale su porta 9901 ###
+
+## Avvio API REST locale
+# python3 api_server.py
+
+## Health check
+# curl http://127.0.0.1:9901/health
+
+## Info immagine E01
+# curl -X POST http://127.0.0.1:9901/ewf/info \
+#   -H 'Content-Type: application/json' \
+#   -d '{"images": ["/cases/disk.E01"], "verbose": true}'
+
+## Conversione RAW -> E01
+# curl -X POST http://127.0.0.1:9901/ewf/acquire-stream \
+#   -H 'Content-Type: application/json' \
+#   -d '{"input": "/images/disk.raw", "target": "/evidence/disk", "compression": "best", "no_prompt": true}'
+
+## Export E01 -> RAW
+# curl -X POST http://127.0.0.1:9901/ewf/export \
+#   -H 'Content-Type: application/json' \
+#   -d '{"images": ["/cases/disk.E01"], "format": "raw", "target": "/exports/disk_raw", "no_prompt": true}'
+
+## Mount E01
+# curl -X POST http://127.0.0.1:9901/ewf/mount \
+#   -H 'Content-Type: application/json' \
+#   -d '{"images": ["/cases/disk.E01"], "mount_point": "/mnt/e01"}'
+
+## Lista mount tracciati
+# curl http://127.0.0.1:9901/ewf/mounts
+# curl http://127.0.0.1:9901/ewf/mounts?all=true
+
+## Unmount E01
+# curl -X POST http://127.0.0.1:9901/ewf/unmount \
+#   -H 'Content-Type: application/json' \
+#   -d '{"mount_point": "/mnt/e01"}'
+
+## Lista file interni
+# curl -X POST http://127.0.0.1:9901/read/ls \
+#   -H 'Content-Type: application/json' \
+#   -d '{"images": ["/cases/disk.E01"], "path": "/"}'

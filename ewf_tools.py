@@ -6,9 +6,9 @@ Wraps the libewf command-line tools (ewfinfo, ewfacquire, ewfacquirestream,
 ewfexport, ewfverify, ewfrecover, ewfmount, ewfdebug) to provide a unified
 interface for creating, reading, exporting and verifying E01/EWF images.
 
-On Windows the bundled executables under the ewf/ directory are used.
-On Linux/macOS the script looks for native tools in PATH first and falls
-back to the bundled executables.
+The repository bundles Windows libewf executables under ewf/.
+On Windows they are executed directly. On Linux/macOS the script prefers
+native tools in PATH and can fall back to the bundled .exe files via Wine.
 
 Usage:
     python ewf_tools.py <command> [options]
@@ -25,11 +25,13 @@ Commands:
 """
 
 import argparse
+import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +40,7 @@ import sys
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _EWF_DIR = os.path.join(_SCRIPT_DIR, "ewf")
+_MOUNT_REGISTRY = os.path.join(_SCRIPT_DIR, ".ewf_mounts.json")
 
 # Map logical tool name -> executable stem
 _TOOLS = {
@@ -52,24 +55,36 @@ _TOOLS = {
 }
 
 
-def _resolve_tool(name: str) -> str:
-    """Return the full path to a libewf tool executable.
+def _resolve_tool_command(name: str) -> list[str]:
+    """Return the command used to execute a libewf tool.
 
     Search order:
     1. Native tool in PATH (works on Linux/macOS with libewf installed).
-    2. Bundled .exe in the ewf/ subdirectory (for Windows or when running
-       the Windows binaries under Wine).
+    2. Bundled .exe in the ewf/ subdirectory.
+       On Linux/macOS Wine is required to run the bundled Windows binaries.
     """
-    # Prefer a native system installation
     native = shutil.which(name)
     if native:
-        return native
+        return [native]
 
-    # Fall back to the bundled Windows .exe
     exe_name = name + ".exe"
     bundled = os.path.join(_EWF_DIR, exe_name)
     if os.path.isfile(bundled):
-        return bundled
+        if platform.system() == "Windows":
+            return [bundled]
+
+        wine = shutil.which("wine")
+        if wine:
+            return [wine, bundled]
+
+        print(
+            f"[ERROR] Found bundled Windows executable '{exe_name}' in '{_EWF_DIR}',\n"
+            "but Wine is not installed. On Linux/macOS either install native\n"
+            "libewf tools (e.g. 'sudo apt-get install ewf-tools') or install Wine\n"
+            "to run the bundled executables.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(
         f"[ERROR] '{name}' not found in PATH or '{_EWF_DIR}'.\n"
@@ -95,6 +110,120 @@ def _run(args: list, stdin=None, check: bool = False) -> int:
     return result.returncode
 
 
+def _load_mount_registry() -> list[dict]:
+    if not os.path.exists(_MOUNT_REGISTRY):
+        return []
+    try:
+        with open(_MOUNT_REGISTRY, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, list):
+            return data
+    except (OSError, json.JSONDecodeError):
+        pass
+    return []
+
+
+def _save_mount_registry(entries: list[dict]) -> None:
+    with open(_MOUNT_REGISTRY, "w", encoding="utf-8") as fh:
+        json.dump(entries, fh, indent=2)
+
+
+def _read_system_mount_points() -> set[str]:
+    mount_points = set()
+    if platform.system() == "Linux" and os.path.exists("/proc/mounts"):
+        try:
+            with open("/proc/mounts", "r", encoding="utf-8") as fh:
+                for line in fh:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        mount_points.add(parts[1].replace("\\040", " "))
+        except OSError:
+            pass
+        return mount_points
+
+    mount_cmd = shutil.which("mount")
+    if not mount_cmd:
+        return mount_points
+
+    result = subprocess.run([mount_cmd], capture_output=True, text=True)
+    for line in result.stdout.splitlines():
+        if " on " in line:
+            try:
+                mount_points.add(line.split(" on ", 1)[1].split(" ", 1)[0])
+            except IndexError:
+                continue
+    return mount_points
+
+
+def _is_mounted(mount_point: str) -> bool:
+    return os.path.abspath(mount_point) in {
+        os.path.abspath(path) for path in _read_system_mount_points()
+    }
+
+
+def _record_mount(images: list[str], mount_point: str) -> None:
+    entries = _load_mount_registry()
+    mount_point = os.path.abspath(mount_point)
+    now = datetime.now(timezone.utc).isoformat()
+    updated = False
+    for entry in entries:
+        if os.path.abspath(entry.get("mount_point", "")) == mount_point:
+            entry["images"] = [str(image) for image in images]
+            entry["mounted_at"] = now
+            updated = True
+            break
+    if not updated:
+        entries.append(
+            {
+                "mount_point": mount_point,
+                "images": [str(image) for image in images],
+                "mounted_at": now,
+            }
+        )
+    _save_mount_registry(entries)
+
+
+def _remove_mount(mount_point: str) -> bool:
+    mount_point = os.path.abspath(mount_point)
+    entries = _load_mount_registry()
+    filtered = [
+        entry
+        for entry in entries
+        if os.path.abspath(entry.get("mount_point", "")) != mount_point
+    ]
+    changed = len(filtered) != len(entries)
+    if changed:
+        _save_mount_registry(filtered)
+    return changed
+
+
+def _list_mount_entries(include_stale: bool = False) -> list[dict]:
+    entries = _load_mount_registry()
+    system_mounts = {os.path.abspath(path) for path in _read_system_mount_points()}
+    results = []
+    for entry in entries:
+        mount_point = os.path.abspath(entry.get("mount_point", ""))
+        mounted = mount_point in system_mounts
+        if include_stale or mounted:
+            results.append(
+                {
+                    "mount_point": mount_point,
+                    "images": entry.get("images", []),
+                    "mounted_at": entry.get("mounted_at"),
+                    "mounted": mounted,
+                }
+            )
+    return results
+
+
+def _resolve_unmount_command() -> list[str] | None:
+    for tool, extra_args in (("fusermount3", ["-u"]), ("fusermount", ["-u"]), ("umount", [])):
+        resolved = shutil.which(tool)
+        if resolved:
+            return [resolved] + extra_args
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Sub-command implementations
 # ---------------------------------------------------------------------------
@@ -102,8 +231,7 @@ def _run(args: list, stdin=None, check: bool = False) -> int:
 
 def cmd_info(args: argparse.Namespace) -> int:
     """Display metadata / case information stored in an E01 image."""
-    tool = _resolve_tool("ewfinfo")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfinfo")
     if args.date_format:
         cmd += ["-d", args.date_format]
     if args.header_format:
@@ -116,8 +244,7 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 def cmd_acquire(args: argparse.Namespace) -> int:
     """Acquire an E01 image from a physical disk or device."""
-    tool = _resolve_tool("ewfacquire")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfacquire")
     if args.format:
         cmd += ["-f", args.format]
     if args.target:
@@ -169,8 +296,7 @@ def cmd_acquire_stream(args: argparse.Namespace) -> int:
     If --input is provided the file is opened and fed to ewfacquirestream as
     stdin instead of the process's own stdin.
     """
-    tool = _resolve_tool("ewfacquirestream")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfacquirestream")
     if args.format:
         cmd += ["-f", args.format]
     if args.target:
@@ -212,8 +338,7 @@ def cmd_acquire_stream(args: argparse.Namespace) -> int:
 
 def cmd_export(args: argparse.Namespace) -> int:
     """Export an E01 image to a raw (dd) file, another E01, or other formats."""
-    tool = _resolve_tool("ewfexport")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfexport")
     if args.format:
         cmd += ["-f", args.format]
     if args.target:
@@ -239,8 +364,7 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     """Verify the integrity (MD5/SHA1 checksums) of an E01 image."""
-    tool = _resolve_tool("ewfverify")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfverify")
     if args.hash:
         for h in args.hash:
             cmd += ["-d", h]
@@ -252,8 +376,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 def cmd_recover(args: argparse.Namespace) -> int:
     """Attempt to recover data from a corrupted or incomplete E01 image."""
-    tool = _resolve_tool("ewfrecover")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfrecover")
     if args.target:
         cmd += ["-t", args.target]
     if args.verbose:
@@ -275,19 +398,47 @@ def cmd_mount(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    tool = _resolve_tool("ewfmount")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfmount")
     if args.verbose:
         cmd.append("-v")
     cmd += args.image
     cmd.append(args.mount_point)
-    return _run(cmd)
+    os.makedirs(args.mount_point, exist_ok=True)
+    exit_code = _run(cmd)
+    if exit_code == 0:
+        _record_mount(args.image, args.mount_point)
+    return exit_code
+
+
+def cmd_unmount(args: argparse.Namespace) -> int:
+    """Unmount a previously mounted E01 image mount point."""
+    if platform.system() == "Windows":
+        print("[ERROR] 'unmount' is not supported on Windows.", file=sys.stderr)
+        return 1
+
+    unmount_cmd = _resolve_unmount_command()
+    if unmount_cmd is None:
+        print(
+            "[ERROR] No unmount command available. Install fusermount/fusermount3 or use umount.",
+            file=sys.stderr,
+        )
+        return 1
+
+    exit_code = _run(unmount_cmd + [args.mount_point])
+    if exit_code == 0:
+        _remove_mount(args.mount_point)
+    return exit_code
+
+
+def cmd_mounts(args: argparse.Namespace) -> int:
+    """List known E01 mount points tracked by this utility."""
+    print(json.dumps({"mounts": _list_mount_entries(include_stale=args.all)}, indent=2))
+    return 0
 
 
 def cmd_debug(args: argparse.Namespace) -> int:
     """Display low-level debug / internal structure information for an E01 image."""
-    tool = _resolve_tool("ewfdebug")
-    cmd = [tool]
+    cmd = _resolve_tool_command("ewfdebug")
     if args.verbose:
         cmd.append("-v")
     cmd += args.image
@@ -603,6 +754,43 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_verbose(p_mnt)
     p_mnt.set_defaults(func=cmd_mount)
+
+    # -- unmount --------------------------------------------------------------
+    p_umnt = sub.add_parser(
+        "unmount",
+        help="Unmount a previously mounted E01 mount point.",
+        description=(
+            "Unmount an E01 image mount point created with ewfmount.\n\n"
+            "Example:\n"
+            "  python ewf_tools.py unmount /mnt/evidence"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_umnt.add_argument(
+        "mount_point",
+        metavar="MOUNT_POINT",
+        help="Directory currently used as mount point.",
+    )
+    p_umnt.set_defaults(func=cmd_unmount)
+
+    # -- mounts ---------------------------------------------------------------
+    p_mounts = sub.add_parser(
+        "mounts",
+        help="List tracked E01 mount points.",
+        description=(
+            "List E01 mount points tracked by this utility and whether they are\n"
+            "still mounted according to the operating system.\n\n"
+            "Example:\n"
+            "  python ewf_tools.py mounts --all"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_mounts.add_argument(
+        "--all",
+        action="store_true",
+        help="Include stale registry entries that are no longer mounted.",
+    )
+    p_mounts.set_defaults(func=cmd_mounts)
 
     # -- debug ----------------------------------------------------------------
     p_dbg = sub.add_parser(

@@ -3,16 +3,17 @@
 read_e01.py - Browse and extract files from E01/EWF forensic images.
 
 Supports two backends, selected automatically:
-  1. pyewf + pytsk3  (preferred) - full filesystem-aware access.
-  2. ewfexport fallback           - exports a sector range to a temporary raw
-     image and uses the 'file' command for basic type detection when
-     pyewf/pytsk3 are not installed.
+    1. pyewf + pytsk3  (preferred) - full filesystem-aware access.
+    2. ewf tools fallback          - uses bundled or native libewf tools when
+         pyewf/pytsk3 are not installed.
 
 Installation of the preferred backend (Linux):
     sudo apt-get install libewf-dev libtsk-dev python3-dev
     pip install pyewf pytsk3
 
-On Windows the bundled ewf/ewfexport.exe is used for the fallback backend.
+The repository bundles Windows libewf executables under ewf/.
+On Linux/macOS native tools are preferred and the bundled .exe files can be
+used through Wine.
 
 Usage:
     python read_e01.py info   <image.E01> [<image.E02> ...]
@@ -52,15 +53,22 @@ _HAVE_PYTSK3 = _have_module("pytsk3")
 _NATIVE_BACKEND = _HAVE_PYEWF and _HAVE_PYTSK3
 
 
-def _resolve_tool(name: str) -> str | None:
-    """Return the path to an ewf tool, or None if not found."""
+def _resolve_tool_command(name: str) -> list[str] | None:
+    """Return the command used to execute an ewf tool, or None if unavailable."""
     native = shutil.which(name)
     if native:
-        return native
+        return [native]
     exe_name = name + ".exe"
     bundled = os.path.join(_EWF_DIR, exe_name)
     if os.path.isfile(bundled):
-        return bundled
+        if platform.system() == "Windows":
+            return [bundled]
+
+        wine = shutil.which("wine")
+        if wine:
+            return [wine, bundled]
+
+        return None
     return None
 
 
@@ -193,15 +201,15 @@ def cmd_info(args: argparse.Namespace) -> int:
         return 0
 
     # Fallback: use ewfinfo
-    tool = _resolve_tool("ewfinfo")
-    if tool is None:
+    tool_cmd = _resolve_tool_command("ewfinfo")
+    if tool_cmd is None:
         print(
-            "[ERROR] Neither pyewf nor ewfinfo is available. "
-            "Install pyewf or ewf-tools.",
+            "[ERROR] Neither pyewf nor an executable ewfinfo backend is available. "
+            "Use native ewf-tools, or install Wine to run the bundled .exe tools.",
             file=sys.stderr,
         )
         return 1
-    result = subprocess.run([tool] + args.image)
+    result = subprocess.run(tool_cmd + args.image)
     return result.returncode
 
 
