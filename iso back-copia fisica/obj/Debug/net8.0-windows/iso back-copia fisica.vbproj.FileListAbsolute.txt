@@ -1,0 +1,32 @@
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\bin\Debug\net8.0-windows\iso back-copia fisica.deps.json
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\bin\Debug\net8.0-windows\iso back-copia fisica.dll
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\bin\Debug\net8.0-windows\iso back-copia fisica.pdb
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.vbproj.AssemblyReference.cache
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\UserControl1.baml
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\UserControl1.g.vb
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica_MarkupCompile.cache
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.g.resources
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.AssemblyInfoInputs.cache
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.AssemblyInfo.vb
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.vbproj.CoreCompileInputs.cache
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.dll
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\refint\iso back-copia fisica.dll
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.pdb
+C:\Users\giaco\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\ref\iso back-copia fisica.dll
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\bin\Debug\net8.0-windows\iso back-copia fisica.deps.json
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\bin\Debug\net8.0-windows\iso back-copia fisica.dll
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\bin\Debug\net8.0-windows\iso back-copia fisica.pdb
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.vbproj.AssemblyReference.cache
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\UserControl1.baml
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\UserControl1.g.vb
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica_MarkupCompile.cache
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.g.resources
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.AssemblyInfoInputs.cache
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.AssemblyInfo.vb
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.vbproj.CoreCompileInputs.cache
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.dll
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\refint\iso back-copia fisica.dll
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\iso back-copia fisica.pdb
+C:\Users\C3V3\Desktop\repos\FORENSIC_STUDIO\iso back-copia fisica\obj\Debug\net8.0-windows\ref\iso back-copia fisica.dll

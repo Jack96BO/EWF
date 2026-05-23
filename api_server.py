@@ -8,6 +8,7 @@ can be orchestrated over localhost:9901.
 """
 
 import base64
+import ctypes
 import json
 import os
 import subprocess
@@ -24,6 +25,125 @@ EWF_SCRIPT = os.path.join(ROOT_DIR, "ewf_tools.py")
 READ_SCRIPT = os.path.join(ROOT_DIR, "read_e01.py")
 
 app = Flask(__name__)
+
+MENU_IT = [
+    {
+        "metodo": "GET",
+        "endpoint": "/health",
+        "descrizione": "Stato del servizio API.",
+    },
+    {
+        "metodo": "GET",
+        "endpoint": "/",
+        "descrizione": "Indice rapido endpoint e menu in italiano.",
+    },
+    {
+        "metodo": "GET",
+        "endpoint": "/menu",
+        "descrizione": "Menu completo in italiano con campi richiesti.",
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/info",
+        "descrizione": "Mostra metadati e informazioni E01/EWF.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/acquire",
+        "descrizione": "Acquisisce un device sorgente in formato EWF.",
+        "campi_obbligatori": ["source"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/acquire-stream",
+        "descrizione": "Crea EWF da stream/raw input.",
+        "campi_obbligatori": ["input oppure data_base64"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/rawCopyXsector",
+        "descrizione": "Copia settore-per-settore da sorgente raw a file raw.",
+        "campi_obbligatori": ["source", "output"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/rawCopyXsectorCpp",
+        "descrizione": "Fallback C++ RawCopyXsector via DLL (Windows).",
+        "campi_obbligatori": ["source", "output"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/export",
+        "descrizione": "Esporta immagine EWF in raw o altro formato.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/verify",
+        "descrizione": "Verifica integrita e hash dell'immagine.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/recover",
+        "descrizione": "Recupero immagine corrotta o incompleta.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/mount",
+        "descrizione": "Monta immagine EWF su mount point.",
+        "campi_obbligatori": ["images", "mount_point"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/unmount",
+        "descrizione": "Smonta un mount point precedentemente montato.",
+        "campi_obbligatori": ["mount_point"],
+    },
+    {
+        "metodo": "GET",
+        "endpoint": "/ewf/mounts",
+        "descrizione": "Lista mount tracciati (query opzionale: all=true).",
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/ewf/debug",
+        "descrizione": "Stampa debug basso livello EWF.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/read/info",
+        "descrizione": "Informazioni immagine dal modulo read.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/read/ls",
+        "descrizione": "Lista file interni di una directory.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/read/tree",
+        "descrizione": "Albero filesystem interno.",
+        "campi_obbligatori": ["images"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/read/cat",
+        "descrizione": "Legge un file interno e lo restituisce in base64.",
+        "campi_obbligatori": ["images", "internal_path"],
+    },
+    {
+        "metodo": "POST",
+        "endpoint": "/read/extract",
+        "descrizione": "Estrae file/cartella interna sul filesystem locale.",
+        "campi_obbligatori": ["images", "internal_path"],
+    },
+]
 
 
 def _payload() -> dict:
@@ -118,9 +238,12 @@ def index():
             "service": "ewf-api",
             "endpoints": [
                 "/health",
+                "/menu",
                 "/ewf/info",
                 "/ewf/acquire",
                 "/ewf/acquire-stream",
+                "/ewf/rawCopyXsector",
+                "/ewf/rawCopyXsectorCpp",
                 "/ewf/export",
                 "/ewf/verify",
                 "/ewf/recover",
@@ -134,6 +257,19 @@ def index():
                 "/read/cat",
                 "/read/extract",
             ],
+            "menu_it": MENU_IT,
+        }
+    )
+
+
+@app.get("/menu")
+def menu_it():
+    return jsonify(
+        {
+            "success": True,
+            "service": "ewf-api",
+            "lingua": "it",
+            "menu": MENU_IT,
         }
     )
 
@@ -216,6 +352,93 @@ def ewf_acquire_stream():
         return _error("Provide either input or data_base64")
 
     return _text_response(_run_script(EWF_SCRIPT, args, stdin_bytes=stdin_bytes))
+
+
+@app.post("/ewf/rawCopyXsector")
+def ewf_raw_copy_xsector():
+    payload = _payload()
+    try:
+        source = _require(payload, "source")
+        output = _require(payload, "output")
+    except ValueError as exc:
+        return _error(str(exc))
+
+    args = ["raw-copy-xsector", str(source), str(output)]
+    _add_flag(args, payload, "bytes_per_sector", "--bytes-per-sector")
+    _add_flag(args, payload, "start_sector", "--start-sector")
+    _add_flag(args, payload, "sector_count", "--sector-count")
+    _add_flag(args, payload, "buffer_sectors", "--buffer-sectors")
+    _add_bool_flag(args, payload, "force", "--force")
+    _add_bool_flag(args, payload, "verbose", "-v")
+    return _text_response(_run_script(EWF_SCRIPT, args))
+
+
+@app.post("/ewf/rawCopyXsectorCpp")
+def ewf_raw_copy_xsector_cpp():
+    payload = _payload()
+    try:
+        source = _require(payload, "source")
+        output = _require(payload, "output")
+    except ValueError as exc:
+        return _error(str(exc))
+
+    if os.name != "nt":
+        return _error("RawCopyXsector C++ DLL e' supportato solo su Windows", status_code=400)
+
+    dll_candidates = []
+    if payload.get("dll_path"):
+        dll_candidates.append(str(payload["dll_path"]))
+    env_dll = os.getenv("RAWCOPYXSECTOR_DLL")
+    if env_dll:
+        dll_candidates.append(env_dll)
+    dll_candidates.extend(
+        [
+            os.path.join(ROOT_DIR, "rawCopyXsector", "rawCopyXsector", "x64", "Release", "rawCopyXsector.dll"),
+            os.path.join(ROOT_DIR, "rawCopyXsector", "rawCopyXsector", "x64", "Debug", "rawCopyXsector.dll"),
+        ]
+    )
+
+    dll_path = next((candidate for candidate in dll_candidates if os.path.isfile(candidate)), None)
+    if not dll_path:
+        return _error(
+            "DLL RawCopyXsector non trovata. Specifica dll_path o variabile RAWCOPYXSECTOR_DLL.",
+            status_code=404,
+        )
+
+    try:
+        lib = ctypes.WinDLL(dll_path)
+        raw_copy = lib.RawCopy
+        raw_copy.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        raw_copy.restype = ctypes.c_bool
+        ok = raw_copy(str(source).encode("utf-8"), str(output).encode("utf-8"))
+    except Exception as exc:
+        return _error(f"Errore chiamata DLL RawCopyXsector: {exc}", status_code=500)
+
+    if not ok:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "exit_code": 1,
+                    "stderr": "RawCopyXsector C++ ha restituito errore",
+                    "stdout": "",
+                    "dll_path": dll_path,
+                }
+            ),
+            500,
+        )
+
+    return jsonify(
+        {
+            "success": True,
+            "exit_code": 0,
+            "stdout": "RawCopyXsector C++ completato",
+            "stderr": "",
+            "dll_path": dll_path,
+            "source": str(source),
+            "output": str(output),
+        }
+    )
 
 
 @app.post("/ewf/export")

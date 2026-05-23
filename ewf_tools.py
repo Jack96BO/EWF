@@ -17,6 +17,7 @@ Commands:
     info            Display metadata / case information for an E01 image.
     acquire         Create an E01 image from a physical disk or device.
     acquire-stream  Create an E01 image from a raw data stream (stdin / pipe).
+    raw-copy-xsector Copy raw sectors from source to an output raw file.
     export          Export an E01 image to raw (dd), another E01, or other formats.
     verify          Verify the integrity (MD5/SHA1 checksums) of an E01 image.
     recover         Recover a corrupted or incomplete E01 image.
@@ -336,6 +337,97 @@ def cmd_acquire_stream(args: argparse.Namespace) -> int:
         return _run(cmd, stdin=sys.stdin.buffer)
 
 
+def cmd_raw_copy_xsector(args: argparse.Namespace) -> int:
+    """Copy sectors from a raw source into a raw output file.
+
+    This command is independent from libewf tools and can be used to create a
+    sector-aligned raw slice from a device or raw image.
+    """
+    if args.bytes_per_sector <= 0:
+        print("[ERROR] --bytes-per-sector must be greater than zero.", file=sys.stderr)
+        return 2
+    if args.start_sector < 0:
+        print("[ERROR] --start-sector cannot be negative.", file=sys.stderr)
+        return 2
+    if args.sector_count is not None and args.sector_count < 0:
+        print("[ERROR] --sector-count cannot be negative.", file=sys.stderr)
+        return 2
+    if args.buffer_sectors <= 0:
+        print("[ERROR] --buffer-sectors must be greater than zero.", file=sys.stderr)
+        return 2
+
+    output_path = os.path.abspath(args.output)
+    source_path = os.path.abspath(args.source)
+
+    if os.path.exists(output_path) and not args.force:
+        print(
+            f"[ERROR] Output already exists: {output_path}. Use --force to overwrite.",
+            file=sys.stderr,
+        )
+        return 2
+
+    source_offset = args.start_sector * args.bytes_per_sector
+    chunk_size = args.buffer_sectors * args.bytes_per_sector
+    remaining_bytes = None
+    if args.sector_count is not None:
+        remaining_bytes = args.sector_count * args.bytes_per_sector
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    copied = 0
+    try:
+        with open(source_path, "rb") as src, open(output_path, "wb") as dst:
+            src.seek(source_offset)
+            while True:
+                if remaining_bytes is not None:
+                    if remaining_bytes <= 0:
+                        break
+                    to_read = min(chunk_size, remaining_bytes)
+                else:
+                    to_read = chunk_size
+
+                block = src.read(to_read)
+                if not block:
+                    break
+
+                dst.write(block)
+                copied += len(block)
+
+                if remaining_bytes is not None:
+                    remaining_bytes -= len(block)
+
+                if args.verbose and copied % (64 * 1024 * 1024) < len(block):
+                    print(f"[INFO] Copied {copied} bytes...", file=sys.stderr)
+
+    except OSError as exc:
+        print(f"[ERROR] raw-copy-xsector failed: {exc}", file=sys.stderr)
+        return 1
+
+    if args.sector_count is not None and copied < args.sector_count * args.bytes_per_sector:
+        requested = args.sector_count * args.bytes_per_sector
+        print(
+            f"[WARN] Requested {requested} bytes but copied {copied} bytes (EOF reached).",
+            file=sys.stderr,
+        )
+
+    print(
+        json.dumps(
+            {
+                "success": True,
+                "source": source_path,
+                "output": output_path,
+                "bytes_per_sector": args.bytes_per_sector,
+                "start_sector": args.start_sector,
+                "sector_count": args.sector_count,
+                "bytes_copied": copied,
+                "sectors_copied": copied // args.bytes_per_sector,
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
 def cmd_export(args: argparse.Namespace) -> int:
     """Export an E01 image to a raw (dd) file, another E01, or other formats."""
     cmd = _resolve_tool_command("ewfexport")
@@ -634,6 +726,58 @@ def build_parser() -> argparse.ArgumentParser:
     _add_acquire_options(p_stream)
     _add_no_prompt(p_stream)
     p_stream.set_defaults(func=cmd_acquire_stream)
+
+    # -- raw-copy-xsector ----------------------------------------------------
+    p_raw = sub.add_parser(
+        "raw-copy-xsector",
+        help="Copy raw sectors from source to an output raw file.",
+        description=(
+            "Copy sectors from a raw source file/device to an output raw file.\n\n"
+            "Examples:\n"
+            "  # Copy first 2048 sectors from a raw image:\n"
+            "  python ewf_tools.py raw-copy-xsector disk.raw out.raw --sector-count 2048\n\n"
+            "  # Copy from sector 63 onward until EOF:\n"
+            "  python ewf_tools.py raw-copy-xsector /dev/sdb slice.raw --start-sector 63"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_raw.add_argument("source", metavar="SOURCE", help="Raw source file or device path.")
+    p_raw.add_argument("output", metavar="OUTPUT", help="Output raw file path.")
+    p_raw.add_argument(
+        "--bytes-per-sector",
+        type=int,
+        default=512,
+        metavar="N",
+        help="Sector size in bytes (default: 512).",
+    )
+    p_raw.add_argument(
+        "--start-sector",
+        type=int,
+        default=0,
+        metavar="N",
+        help="First sector offset to copy from SOURCE (default: 0).",
+    )
+    p_raw.add_argument(
+        "--sector-count",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Number of sectors to copy. If omitted, copy until EOF.",
+    )
+    p_raw.add_argument(
+        "--buffer-sectors",
+        type=int,
+        default=2048,
+        metavar="N",
+        help="Number of sectors per read/write chunk (default: 2048).",
+    )
+    p_raw.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite OUTPUT if it already exists.",
+    )
+    _add_verbose(p_raw)
+    p_raw.set_defaults(func=cmd_raw_copy_xsector)
 
     # -- export ---------------------------------------------------------------
     p_exp = sub.add_parser(

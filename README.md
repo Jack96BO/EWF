@@ -51,24 +51,33 @@ Health check:
 curl http://127.0.0.1:9901/health
 ```
 
+Menu API in italiano:
+
+```bash
+curl http://127.0.0.1:9901/menu
+```
+
 ## Endpoint disponibili
 
 GET:
 
 - /health
 - /
+- /menu
+- /ewf/mounts
 
 POST:
 
 - /ewf/info
 - /ewf/acquire
 - /ewf/acquire-stream
+- /ewf/rawCopyXsector
+- /ewf/rawCopyXsectorCpp
 - /ewf/export
 - /ewf/verify
 - /ewf/recover
 - /ewf/mount
 - /ewf/unmount
-- /ewf/mounts
 - /ewf/debug
 - /read/info
 - /read/ls
@@ -116,6 +125,33 @@ curl -X POST http://127.0.0.1:9901/ewf/acquire-stream \
     "target": "/evidence/disk_converted",
     "compression": "best",
     "no_prompt": true
+  }'
+```
+
+Copia raw settore-per-settore:
+
+```bash
+curl -X POST http://127.0.0.1:9901/ewf/rawCopyXsector \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source": "/images/disk.raw",
+    "output": "/exports/slice.raw",
+    "bytes_per_sector": 512,
+    "start_sector": 2048,
+    "sector_count": 4096,
+    "force": true
+  }'
+```
+
+Fallback C++ RawCopyXsector (solo Windows con DLL disponibile):
+
+```bash
+curl -X POST http://127.0.0.1:9901/ewf/rawCopyXsectorCpp \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source": "\\\\.\\PhysicalDrive1",
+    "output": "C:/evidence/fallback.img",
+    "dll_path": "C:/tools/rawCopyXsector.dll"
   }'
 ```
 
@@ -225,3 +261,6 @@ curl -X POST http://127.0.0.1:9901/read/extract \
 - Il mount richiede supporto FUSE e tool ewfmount disponibili o via pacchetto nativo o via bundle eseguibile.
 - Per la gestione mount conviene usare i pacchetti nativi su Linux: in questo ambiente `umount` e' presente, mentre `wine` e tool libewf nativi non risultano installati.
 - Il browsing di filesystem interno richiede pyewf e pytsk3.
+- La UI del progetto `iso back-copia fisica` e' stata estesa per orchestrare tutte le funzioni EWF/Read e il fallback RawCopyXsector (API e C++).
+- Nella UI sono disponibili: selettore DLL C++ (browse + auto-detect), fallback automatico in sequenza (API/C++) e preset dedicati per ogni endpoint EWF.
+- L'endpoint `/ewf/rawCopyXsectorCpp` richiede Windows e una DLL valida (`RAWCOPYXSECTOR_DLL` o `dll_path` nel payload).

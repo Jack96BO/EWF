@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "Wlml0K3NDTU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\C3V3\\Desktop\\repos\\FORENSIC_STUDIO\\iso back-copia fisica\\iso back-copia fisica.vbproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\C3V3\\.nuget\\packages\\system.codedom\\10.0.6\\system.codedom.10.0.6.nupkg.sha512",
+    "C:\\Users\\C3V3\\.nuget\\packages\\system.management\\10.0.6\\system.management.10.0.6.nupkg.sha512"
+  ],
+  "logs": []
+}
